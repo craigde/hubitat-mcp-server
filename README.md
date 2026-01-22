@@ -78,7 +78,20 @@ http://[HUB_IP]/apps/api/[APP_ID]/[endpoint]?access_token=[ACCESS_TOKEN]
 
 ### Creating an MCP Server in Workato
 
-#### Step 1: Create a Project
+> ⚠️ **Important:** You must enable **Cloud Access** in your Hubitat Maker API settings and use the cloud URL. Workato's servers cannot reach your local hub IP directly.
+
+#### Step 1: Enable Cloud Access in Hubitat
+
+1. Log into your Hubitat hub's admin interface
+2. Go to **Apps** → **Maker API**
+3. Scroll down and enable **Allow access via cloud endpoints**
+4. Click **Done** to save
+5. Note your **Cloud API URL** — it will look like:
+   ```
+   https://cloud.hubitat.com/api/YOUR_CLOUD_ID/apps/APP_ID
+   ```
+
+#### Step 2: Create a Project in Workato
 
 1. Log into your Workato account
 2. Click **Projects** in the sidebar
@@ -86,22 +99,23 @@ http://[HUB_IP]/apps/api/[APP_ID]/[endpoint]?access_token=[ACCESS_TOKEN]
 4. Enter a name (e.g., "Hubitat Smart Home")
 5. Click **Create project**
 
-#### Step 2: Create an HTTP Connection
+#### Step 3: Create an HTTP Connection
 
 1. Inside your project, click **Create** → **Connection**
 2. Search for and select **HTTP**
 3. Configure the connection:
    - **Connection name:** Hubitat Maker API
-   - **Base URL:** Your Maker API base URL, e.g.:
-     - Local: `http://192.168.1.100/apps/api/123` (replace with your hub IP and app ID)
-     - Cloud: `https://cloud.hubitat.com/api/YOUR_CLOUD_ID/apps/123`
+   - **Base URL:** Your Maker API **cloud** URL:
+     ```
+     https://cloud.hubitat.com/api/YOUR_CLOUD_ID/apps/APP_ID
+     ```
    - **Authentication type:** Query params
    - **Query parameters:**
      - **Key:** `access_token`
      - **Value:** Your Maker API access token
 4. Click **Connect** to test and save
 
-#### Step 3: Create an API Proxy Collection
+#### Step 4: Create an API Proxy Collection
 
 1. Navigate to **Platform** → **API Platform** → **API Collections**
 2. Click **Create new API collection**
@@ -113,10 +127,10 @@ http://[HUB_IP]/apps/api/[APP_ID]/[endpoint]?access_token=[ACCESS_TOKEN]
 5. Select **Import OpenAPI Specification**
 6. Upload `hubitat-maker-api.yaml`
 7. Select the endpoints you want to expose
-8. For **HTTP Connection**, select the Hubitat connection you created in Step 2
+8. For **HTTP Connection**, select the Hubitat connection you created in Step 3
 9. Click **Create**
 
-#### Step 4: Create the MCP Server
+#### Step 5: Create the MCP Server
 
 1. Go to **AI Hub** → **MCP Servers**
 2. Click **Create MCP server**
