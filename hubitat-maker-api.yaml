@@ -1,0 +1,916 @@
+openapi: 3.0.3
+info:
+  title: Hubitat Maker API
+  description: |
+    The Hubitat Maker API provides a simple HTTP interface to control and monitor 
+    smart home devices connected to your Hubitat Elevation hub. This API allows you to:
+    - List and get details about authorized devices
+    - Send commands to devices (turn on/off, set levels, etc.)
+    - Retrieve device events and command lists
+    - Manage hub variables
+    - Control hub modes and Hubitat Safety Monitor (HSM)
+    
+    **Authentication**: All endpoints require an access_token query parameter.
+    
+    **Base URL Format**: 
+    - Local: `http://[hub_ip]/apps/api/[app_id]`
+    - Cloud: `https://cloud.hubitat.com/api/[cloud_id]/apps/[app_id]`
+  version: "1.0.0"
+  contact:
+    name: Hubitat Support
+    url: https://community.hubitat.com
+
+servers:
+  - url: http://{hub_ip}/apps/api/{app_id}
+    description: Local Hubitat Hub
+    variables:
+      hub_ip:
+        default: "192.168.1.100"
+        description: The IP address of your Hubitat hub on your local network
+      app_id:
+        default: "1"
+        description: The Maker API app ID from your Hubitat hub
+  - url: https://cloud.hubitat.com/api/{cloud_id}/apps/{app_id}
+    description: Hubitat Cloud Endpoint
+    variables:
+      cloud_id:
+        default: "your-cloud-id"
+        description: Your Hubitat cloud ID
+      app_id:
+        default: "1"
+        description: The Maker API app ID
+
+security:
+  - accessToken: []
+
+paths:
+  /devices:
+    get:
+      operationId: listDevices
+      summary: List all authorized devices
+      description: Returns a list of all devices authorized for this Maker API instance with basic information (id, name, label).
+      tags:
+        - Devices
+      responses:
+        "200":
+          description: List of authorized devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeviceSummary"
+              example:
+                - id: "1"
+                  name: "My First Device"
+                  label: "Living Room Light"
+                - id: "2"
+                  name: "My Second Device"
+                  label: "Living Room Switch"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+
+  /devices/all:
+    get:
+      operationId: listAllDevicesDetailed
+      summary: List all devices with full details
+      description: Returns detailed information about all authorized devices including capabilities, attributes, and available commands.
+      tags:
+        - Devices
+      responses:
+        "200":
+          description: Detailed list of all authorized devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeviceDetailed"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+
+  /devices/{deviceId}:
+    get:
+      operationId: getDeviceDetails
+      summary: Get device details
+      description: Returns detailed information about a specific device including capabilities, current attribute values, and available commands.
+      tags:
+        - Devices
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: The unique identifier of the device
+          schema:
+            type: string
+          example: "1"
+      responses:
+        "200":
+          description: Device details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceDetailed"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "404":
+          description: Device not found
+
+  /devices/{deviceId}/events:
+    get:
+      operationId: getDeviceEvents
+      summary: Get device events
+      description: Returns a list of recent events for the specified device.
+      tags:
+        - Devices
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: The unique identifier of the device
+          schema:
+            type: string
+          example: "1"
+      responses:
+        "200":
+          description: List of device events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeviceEvent"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "404":
+          description: Device not found
+
+  /devices/{deviceId}/commands:
+    get:
+      operationId: getDeviceCommands
+      summary: Get available device commands
+      description: Returns a list of commands available for the specified device.
+      tags:
+        - Devices
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: The unique identifier of the device
+          schema:
+            type: string
+          example: "1"
+      responses:
+        "200":
+          description: List of available commands
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Command"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "404":
+          description: Device not found
+
+  /devices/{deviceId}/{command}:
+    get:
+      operationId: sendDeviceCommand
+      summary: Send command to device
+      description: |
+        Sends a command to the specified device. Common commands include:
+        - **on** / **off**: Turn switch/light on or off
+        - **refresh**: Refresh device state
+        - **lock** / **unlock**: Lock or unlock a lock device
+        - **open** / **close**: Open or close a door/window/valve
+        - **push**: Push a button
+        
+        Returns the updated device state after command execution.
+      tags:
+        - Device Commands
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: The unique identifier of the device
+          schema:
+            type: string
+          example: "1"
+        - name: command
+          in: path
+          required: true
+          description: The command to send to the device
+          schema:
+            type: string
+            enum:
+              - "on"
+              - "off"
+              - "refresh"
+              - "lock"
+              - "unlock"
+              - "open"
+              - "close"
+              - "push"
+          example: "on"
+      responses:
+        "200":
+          description: Command executed successfully, returns updated device state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceDetailed"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "404":
+          description: Device not found
+        "400":
+          description: Invalid command for this device
+
+  /devices/{deviceId}/{command}/{value}:
+    get:
+      operationId: sendDeviceCommandWithValue
+      summary: Send command with value to device
+      description: |
+        Sends a command with a parameter value to the specified device. Common commands include:
+        - **setLevel/{0-100}**: Set brightness level (0-100%)
+        - **setColorTemperature/{2700-6500}**: Set color temperature in Kelvin
+        - **setHue/{0-100}**: Set hue value
+        - **setSaturation/{0-100}**: Set saturation value
+        - **setVolume/{0-100}**: Set volume level
+        - **setThermostatSetpoint/{temperature}**: Set thermostat temperature
+        - **setHeatingSetpoint/{temperature}**: Set heating setpoint
+        - **setCoolingSetpoint/{temperature}**: Set cooling setpoint
+        - **setSpeed/{speed}**: Set fan speed (low, medium-low, medium, medium-high, high, auto)
+        - **setPosition/{0-100}**: Set shade/blind position
+        
+        Returns the updated device state after command execution.
+      tags:
+        - Device Commands
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: The unique identifier of the device
+          schema:
+            type: string
+          example: "1"
+        - name: command
+          in: path
+          required: true
+          description: The command to send to the device
+          schema:
+            type: string
+          example: "setLevel"
+        - name: value
+          in: path
+          required: true
+          description: The value/parameter for the command
+          schema:
+            type: string
+          example: "50"
+      responses:
+        "200":
+          description: Command executed successfully, returns updated device state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceDetailed"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "404":
+          description: Device not found
+        "400":
+          description: Invalid command or value for this device
+
+  /devices/{deviceId}/{command}/{value1}/{value2}:
+    get:
+      operationId: sendDeviceCommandWithMultipleValues
+      summary: Send command with multiple values to device
+      description: |
+        Sends a command with multiple parameter values to the specified device. Examples:
+        - **setLevel/{level}/{duration}**: Set level with transition duration in seconds
+        - **setColorTemperature/{temp}/{level}**: Set color temperature and level together
+        - **setCode/{position}/{code}**: Set a lock code at a specific position
+        
+        For setColor with HSB values, use URL-encoded JSON: 
+        `/devices/{id}/setColor/%7B%22hue%22%3A50%2C%22saturation%22%3A100%2C%22level%22%3A50%7D`
+      tags:
+        - Device Commands
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: The unique identifier of the device
+          schema:
+            type: string
+          example: "1"
+        - name: command
+          in: path
+          required: true
+          description: The command to send to the device
+          schema:
+            type: string
+          example: "setLevel"
+        - name: value1
+          in: path
+          required: true
+          description: The first value/parameter for the command
+          schema:
+            type: string
+          example: "50"
+        - name: value2
+          in: path
+          required: true
+          description: The second value/parameter for the command
+          schema:
+            type: string
+          example: "2"
+      responses:
+        "200":
+          description: Command executed successfully, returns updated device state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceDetailed"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "404":
+          description: Device not found
+        "400":
+          description: Invalid command or values for this device
+
+  /devices/{deviceId}/attribute/{attributeName}:
+    get:
+      operationId: getDeviceAttribute
+      summary: Get specific device attribute
+      description: Returns the current value of a specific attribute for the device.
+      tags:
+        - Devices
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: The unique identifier of the device
+          schema:
+            type: string
+          example: "123"
+        - name: attributeName
+          in: path
+          required: true
+          description: The name of the attribute to retrieve
+          schema:
+            type: string
+          example: "switch"
+      responses:
+        "200":
+          description: Attribute value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttributeValue"
+              example:
+                id: "123"
+                attribute: "switch"
+                value: "off"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "404":
+          description: Device or attribute not found
+
+  /hubvariables:
+    get:
+      operationId: listHubVariables
+      summary: List all hub variables
+      description: Returns a list of all authorized hub variables with their current values and types.
+      tags:
+        - Hub Variables
+      responses:
+        "200":
+          description: List of hub variables
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HubVariable"
+              example:
+                - name: "myStringVariable"
+                  value: "Example value"
+                  type: "string"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+
+  /hubvariables/{variableName}:
+    get:
+      operationId: getHubVariable
+      summary: Get hub variable value
+      description: Returns the current value and type of a specific hub variable.
+      tags:
+        - Hub Variables
+      parameters:
+        - name: variableName
+          in: path
+          required: true
+          description: The name of the hub variable
+          schema:
+            type: string
+          example: "myStringVariable"
+      responses:
+        "200":
+          description: Hub variable details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubVariable"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "404":
+          description: Variable not found
+
+  /hubvariables/{variableName}/{value}:
+    get:
+      operationId: setHubVariable
+      summary: Set hub variable value
+      description: |
+        Sets the value of a hub variable. The variable must be authorized for use in this 
+        Maker API instance. Note that values are case-sensitive, and if your variable name 
+        or value contains spaces or special characters, URL encoding may be required.
+      tags:
+        - Hub Variables
+      parameters:
+        - name: variableName
+          in: path
+          required: true
+          description: The name of the hub variable to set
+          schema:
+            type: string
+          example: "myStringVariable"
+        - name: value
+          in: path
+          required: true
+          description: The new value for the variable
+          schema:
+            type: string
+          example: "testing123"
+      responses:
+        "200":
+          description: Variable updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubVariable"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "404":
+          description: Variable not found
+
+  /modes:
+    get:
+      operationId: listModes
+      summary: List hub modes
+      description: |
+        Returns a list of all modes configured on the hub and indicates the current active mode.
+        Requires "Allow control of modes" to be enabled in Maker API settings.
+      tags:
+        - Modes
+      responses:
+        "200":
+          description: List of hub modes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Mode"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "403":
+          description: Mode control not enabled in Maker API settings
+
+  /modes/{modeId}:
+    get:
+      operationId: setMode
+      summary: Set hub mode
+      description: |
+        Changes the hub to the specified mode. Requires "Allow control of modes" to be 
+        enabled in Maker API settings.
+      tags:
+        - Modes
+      parameters:
+        - name: modeId
+          in: path
+          required: true
+          description: The numeric ID of the mode to activate
+          schema:
+            type: string
+          example: "1"
+      responses:
+        "200":
+          description: Mode changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModeChangeResult"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "403":
+          description: Mode control not enabled in Maker API settings
+        "404":
+          description: Mode not found
+
+  /hsm:
+    get:
+      operationId: getHsmStatus
+      summary: Get HSM status
+      description: |
+        Returns the current Hubitat Safety Monitor (HSM) status. 
+        Requires "Allow control of HSM" to be enabled in Maker API settings.
+      tags:
+        - Hubitat Safety Monitor
+      responses:
+        "200":
+          description: Current HSM status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HsmStatus"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "403":
+          description: HSM control not enabled in Maker API settings
+
+  /hsm/{armState}:
+    get:
+      operationId: setHsmState
+      summary: Set HSM arm state
+      description: |
+        Sets the Hubitat Safety Monitor arm state. 
+        Requires "Allow control of HSM" to be enabled in Maker API settings.
+        
+        Valid arm states:
+        - **armAway**: Arm the system in Away mode
+        - **armHome**: Arm the system in Home mode
+        - **armNight**: Arm the system in Night mode
+        - **disarm**: Disarm the system
+        - **armRules**: Arm custom rules
+        - **disarmRules**: Disarm custom rules
+        - **disarmAll**: Disarm all including custom rules
+        - **cancelAlerts**: Cancel any active alerts
+      tags:
+        - Hubitat Safety Monitor
+      parameters:
+        - name: armState
+          in: path
+          required: true
+          description: The HSM arm state to set
+          schema:
+            type: string
+            enum:
+              - armAway
+              - armHome
+              - armNight
+              - disarm
+              - armRules
+              - disarmRules
+              - disarmAll
+              - cancelAlerts
+          example: "armAway"
+      responses:
+        "200":
+          description: HSM state changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HsmStatus"
+        "401":
+          description: Unauthorized - Invalid or missing access token
+        "403":
+          description: HSM control not enabled in Maker API settings
+        "400":
+          description: Invalid arm state
+
+  /postURL/{url}:
+    get:
+      operationId: setPostUrl
+      summary: Set event POST URL
+      description: |
+        Sets a URL where device events will be sent via HTTP POST. Once set, Maker API 
+        will send every device event for selected devices to this URL. The URL must be 
+        URL-encoded.
+        
+        To clear the URL and stop the event stream, use the /postURL endpoint without a URL.
+      tags:
+        - Events
+      parameters:
+        - name: url
+          in: path
+          required: true
+          description: The URL-encoded URL to receive POST events
+          schema:
+            type: string
+          example: "https%3A%2F%2Fexample.com%2Fwebhook"
+      responses:
+        "200":
+          description: POST URL set successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  postURL:
+                    type: string
+                    description: The configured POST URL
+        "401":
+          description: Unauthorized - Invalid or missing access token
+
+  /postURL:
+    get:
+      operationId: clearPostUrl
+      summary: Clear event POST URL
+      description: Clears the configured POST URL, stopping the event stream.
+      tags:
+        - Events
+      responses:
+        "200":
+          description: POST URL cleared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  postURL:
+                    type: string
+                    nullable: true
+                    description: Returns null when cleared
+        "401":
+          description: Unauthorized - Invalid or missing access token
+
+components:
+  securitySchemes:
+    accessToken:
+      type: apiKey
+      in: query
+      name: access_token
+      description: |
+        The access token provided by Maker API. This token is generated when you set up 
+        Maker API on your Hubitat hub and should be treated like a password.
+
+  schemas:
+    DeviceSummary:
+      type: object
+      description: Basic device information
+      properties:
+        id:
+          type: string
+          description: Unique device identifier
+          example: "1"
+        name:
+          type: string
+          description: Device driver name
+          example: "My First Device"
+        label:
+          type: string
+          description: User-assigned device label
+          example: "Living Room Light"
+      required:
+        - id
+        - name
+        - label
+
+    DeviceDetailed:
+      type: object
+      description: Detailed device information including capabilities and current state
+      properties:
+        id:
+          type: string
+          description: Unique device identifier
+          example: "1"
+        name:
+          type: string
+          description: Device driver name
+          example: "My First Device"
+        label:
+          type: string
+          description: User-assigned device label
+          example: "Living Room Light"
+        type:
+          type: string
+          description: Device driver type
+          example: "Virtual Switch"
+        date:
+          type: string
+          format: date-time
+          description: Last activity timestamp
+          example: "2018-10-16T00:08:18+0000"
+        model:
+          type: string
+          nullable: true
+          description: Device model (if available)
+        manufacturer:
+          type: string
+          nullable: true
+          description: Device manufacturer (if available)
+        capabilities:
+          type: array
+          description: List of device capabilities
+          items:
+            type: string
+          example:
+            - "Switch"
+            - "Refresh"
+        attributes:
+          type: object
+          description: Current attribute values
+          additionalProperties:
+            type: string
+          example:
+            switch: "off"
+            level: "100"
+        commands:
+          type: array
+          description: Available device commands
+          items:
+            $ref: "#/components/schemas/Command"
+      required:
+        - id
+        - name
+        - label
+        - type
+        - capabilities
+        - attributes
+        - commands
+
+    Command:
+      type: object
+      description: A command available for a device
+      properties:
+        command:
+          type: string
+          description: Command name
+          example: "on"
+      required:
+        - command
+
+    DeviceEvent:
+      type: object
+      description: A device event record
+      properties:
+        device_id:
+          type: string
+          description: Device identifier
+          example: "1"
+        label:
+          type: string
+          description: Device label
+          example: "Living Room Light"
+        name:
+          type: string
+          description: Event/attribute name
+          example: "switch"
+        value:
+          type: string
+          description: Event value
+          example: "off"
+        date:
+          type: string
+          format: date-time
+          description: Event timestamp
+          example: "2018-10-16T00:08:18+0000"
+        isStateChange:
+          type: boolean
+          nullable: true
+          description: Whether this event represents a state change
+        source:
+          type: string
+          description: Event source
+          example: "DEVICE"
+      required:
+        - device_id
+        - label
+        - name
+        - value
+        - date
+        - source
+
+    AttributeValue:
+      type: object
+      description: A single attribute value
+      properties:
+        id:
+          type: string
+          description: Device identifier
+          example: "123"
+        attribute:
+          type: string
+          description: Attribute name
+          example: "switch"
+        value:
+          type: string
+          description: Current attribute value
+          example: "off"
+      required:
+        - id
+        - attribute
+        - value
+
+    HubVariable:
+      type: object
+      description: A hub variable
+      properties:
+        name:
+          type: string
+          description: Variable name
+          example: "myStringVariable"
+        value:
+          type: string
+          description: Current variable value
+          example: "Example value"
+        type:
+          type: string
+          description: Variable data type
+          enum:
+            - string
+            - integer
+            - decimal
+            - boolean
+            - datetime
+          example: "string"
+      required:
+        - name
+        - value
+        - type
+
+    Mode:
+      type: object
+      description: A hub mode
+      properties:
+        id:
+          type: string
+          description: Mode identifier
+          example: "1"
+        name:
+          type: string
+          description: Mode name
+          example: "Home"
+        active:
+          type: boolean
+          description: Whether this mode is currently active
+          example: true
+      required:
+        - id
+        - name
+        - active
+
+    ModeChangeResult:
+      type: object
+      description: Result of a mode change operation
+      properties:
+        id:
+          type: string
+          description: New mode identifier
+          example: "2"
+        name:
+          type: string
+          description: New mode name
+          example: "Away"
+      required:
+        - id
+        - name
+
+    HsmStatus:
+      type: object
+      description: Hubitat Safety Monitor status
+      properties:
+        hsm:
+          type: string
+          description: Current HSM status
+          enum:
+            - armedAway
+            - armedHome
+            - armedNight
+            - disarmed
+            - allDisarmed
+            - intrusion
+            - intrusion-home
+            - intrusion-night
+            - smoke
+            - water
+            - rule
+          example: "disarmed"
+      required:
+        - hsm
+
+tags:
+  - name: Devices
+    description: Operations for listing and querying device information
+  - name: Device Commands
+    description: Operations for sending commands to devices
+  - name: Hub Variables
+    description: Operations for managing hub variables
+  - name: Modes
+    description: Operations for viewing and changing hub modes
+  - name: Hubitat Safety Monitor
+    description: Operations for controlling Hubitat Safety Monitor (HSM)
+  - name: Events
+    description: Operations for configuring event streaming
