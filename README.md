@@ -129,6 +129,10 @@ http://[HUB_IP]/apps/api/[APP_ID]/[endpoint]?access_token=[ACCESS_TOKEN]
 7. Select the endpoints you want to expose
 8. For **HTTP Connection**, select the Hubitat connection you created in Step 3
 9. Click **Create**
+10. After creation, go to the **Endpoints** tab
+11. For each endpoint you want to use, click the **three-dot menu** (⋮) and select **Activate** (or use the toggle to enable them)
+
+> 💡 **Tip:** You can activate all endpoints or just the ones you need. Inactive endpoints won't be available to the MCP server.
 
 #### Step 5: Create the MCP Server
 
@@ -137,9 +141,12 @@ http://[HUB_IP]/apps/api/[APP_ID]/[endpoint]?access_token=[ACCESS_TOKEN]
 3. **Name:** Hubitat Smart Home (or your preferred name)
 4. **Select tools:** Choose the Hubitat API collection you created
 5. Click **Create MCP server**
-6. Go to the **User access** tab
-7. Ensure **Token-based access** is selected under Access Method
-8. Copy the **Developer MCP Token** URL — you'll need this for Claude/ChatGPT
+6. On the MCP server page, click the **Settings** tab
+7. Under **Access Method**, ensure **Token-based access** is selected
+8. Under **Developer MCP Token**, click **Copy** to copy the full URL with token
+   - The URL will look like: `https://406.apim.mcp.trial.workato.com/username/hubitat-maker-api-v1?wkt_token=...`
+
+> 💡 **Tip:** You can also find the Remote MCP URL (without token) on the **Overview** tab in the right sidebar.
 
 ### Example: Using with Claude
 
