@@ -76,24 +76,56 @@ http://[HUB_IP]/apps/api/[APP_ID]/[endpoint]?access_token=[ACCESS_TOKEN]
 
 ## Usage with Workato MCP
 
-### Creating an MCP Server
+### Creating an MCP Server in Workato
+
+#### Step 1: Create a Project
 
 1. Log into your Workato account
-2. Navigate to **Platform** → **API Platform** → **API Collections**
-3. Click **Create new API collection**
-4. Select **Import OpenAPI Specification**
-5. Upload `hubitat-maker-api.yaml`
-6. Select the endpoints you want to expose
-7. Configure authentication (use Query Parameter auth with `access_token`)
-8. Save and activate your collection
+2. Click **Projects** in the sidebar
+3. Click **Create** → **Project**
+4. Enter a name (e.g., "Hubitat Smart Home")
+5. Click **Create project**
 
-### Creating the MCP Server
+#### Step 2: Create an HTTP Connection
+
+1. Inside your project, click **Create** → **Connection**
+2. Search for and select **HTTP**
+3. Configure the connection:
+   - **Connection name:** Hubitat Maker API
+   - **Base URL:** Your Maker API base URL, e.g.:
+     - Local: `http://192.168.1.100/apps/api/123` (replace with your hub IP and app ID)
+     - Cloud: `https://cloud.hubitat.com/api/YOUR_CLOUD_ID/apps/123`
+   - **Authentication type:** Query params
+   - **Query parameters:**
+     - **Key:** `access_token`
+     - **Value:** Your Maker API access token
+4. Click **Connect** to test and save
+
+#### Step 3: Create an API Proxy Collection
+
+1. Navigate to **Platform** → **API Platform** → **API Collections**
+2. Click **Create new API collection**
+3. Select **API proxy collection**
+4. Configure the collection:
+   - **Name:** Hubitat Maker API
+   - **Version:** v1
+   - **Project:** Select your Hubitat project
+5. Select **Import OpenAPI Specification**
+6. Upload `hubitat-maker-api.yaml`
+7. Select the endpoints you want to expose
+8. For **HTTP Connection**, select the Hubitat connection you created in Step 2
+9. Click **Create**
+
+#### Step 4: Create the MCP Server
 
 1. Go to **AI Hub** → **MCP Servers**
-2. Click **Create MCP Server**
-3. Select your Hubitat API collection
-4. Configure access settings
-5. Copy your MCP URL for use with Claude, ChatGPT, or Cursor
+2. Click **Create MCP server**
+3. **Name:** Hubitat Smart Home (or your preferred name)
+4. **Select tools:** Choose the Hubitat API collection you created
+5. Click **Create MCP server**
+6. Go to the **User access** tab
+7. Ensure **Token-based access** is selected under Access Method
+8. Copy the **Developer MCP Token** URL — you'll need this for Claude/ChatGPT
 
 ### Example: Using with Claude
 
@@ -104,6 +136,88 @@ Once your MCP server is configured, you can use natural language commands like:
 - *"What's the status of all my devices?"*
 - *"Lock all the doors"*
 - *"Set the house to Away mode"*
+
+## Connecting to AI Assistants
+
+After creating your MCP server in Workato, you can connect it to various AI assistants. You'll need your **MCP URL** and **token** from Workato:
+
+1. Go to **AI Hub** → **MCP Servers**
+2. Click on your Hubitat MCP server
+3. Go to **Settings** → **End user access**
+4. Copy the **Developer MCP Token** URL (includes the `wkt_token`)
+
+### Claude (claude.ai)
+
+1. Open [Claude](https://claude.ai) and go to **Settings** → **Connectors**
+2. Click **+ Add new connector**
+3. Enter a name for your connector (e.g., "Hubitat Smart Home")
+4. Paste your MCP URL and token into the **Remote MCP server URL** field:
+   ```
+   https://XXX.apim.mcp.workato.com/your-username/hubitat-maker-api-v1?wkt_token=YOUR_TOKEN
+   ```
+5. Click **Add**
+6. Click **Configure** on the newly created connector
+7. Set permissions to **Always ask permission** (recommended) or **Allow unsupervised**
+8. Start a new chat to use your Hubitat tools
+
+### ChatGPT (OpenAI)
+
+1. Open [ChatGPT](https://chat.openai.com) and go to **Settings** → **Apps & Connectors**
+2. Enable **Developer mode** under **Advanced settings**
+3. Go back to **Apps & Connectors** and click **Create**
+4. Enter a name for your MCP connector (e.g., "Hubitat Smart Home")
+5. Paste your MCP URL and token in the **URL** field:
+   ```
+   https://XXX.apim.mcp.workato.com/your-username/hubitat-maker-api-v1?wkt_token=YOUR_TOKEN
+   ```
+6. Optionally add a description
+7. Set **Authentication** to **No Auth** (authentication is handled via the token in the URL)
+8. Select the checkbox to accept the risk of adding a custom MCP server
+9. Click **Create**
+10. Start a new chat to use your Hubitat tools
+
+### Claude Desktop App
+
+For the Claude desktop application, edit the configuration file:
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`  
+**Linux:** `~/.config/Claude/claude_desktop_config.json`
+
+Add your MCP server configuration:
+
+```json
+{
+  "mcpServers": {
+    "hubitat": {
+      "url": "https://XXX.apim.mcp.workato.com/your-username/hubitat-maker-api-v1?wkt_token=YOUR_TOKEN"
+    }
+  }
+}
+```
+
+Save the file and restart Claude Desktop.
+
+### Cursor IDE
+
+1. Go to **Settings** → **Cursor Settings**
+2. Click **MCP & Integrations** in the sidebar
+3. Click **+ New MCP Server** to open the `mcp.json` file
+4. Add your configuration:
+
+```json
+{
+  "mcpServers": {
+    "hubitat": {
+      "url": "https://XXX.apim.mcp.workato.com/your-username/hubitat-maker-api-v1?wkt_token=YOUR_TOKEN"
+    }
+  }
+}
+```
+
+5. Save and start a new chat with the Cursor agent
+
+> ⚠️ **Important:** You must start a new chat after adding an MCP server. AI assistants only detect MCP tools available when a chat begins.
 
 ## API Endpoints Reference
 
